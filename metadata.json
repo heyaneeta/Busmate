@@ -1,0 +1,7 @@
+{
+  "name": "BUSMATE",
+  "description": "A modern bus tracking and management application for students, drivers, and admins.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}

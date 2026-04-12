@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">BusMate</string>
+    <string name="title_activity_main">BusMate</string>
+    <string name="package_name">com.busmate.app</string>
+    <string name="custom_url_scheme">com.busmate.app</string>
+</resources>

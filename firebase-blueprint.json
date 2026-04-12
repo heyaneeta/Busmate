@@ -1,0 +1,154 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Basic user role information.",
+      "type": "object",
+      "properties": {
+        "role": { "type": "string", "enum": ["student", "driver", "admin"] },
+        "email": { "type": "string", "format": "email" }
+      },
+      "required": ["role", "email"]
+    },
+    "Student": {
+      "title": "Student",
+      "description": "A student registered in the system.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "uid": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "boardingPoint": { "type": "string" },
+        "plan": { "type": "string" },
+        "status": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "password": { "type": "string" },
+        "assignedBus": { "type": "string" },
+        "assignedRoute": { "type": "string" }
+      },
+      "required": ["id", "uid", "name", "email"]
+    },
+    "Driver": {
+      "title": "Driver",
+      "description": "A bus driver.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "uid": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "assignedBus": { "type": "string" }
+      },
+      "required": ["id", "uid", "name", "email"]
+    },
+    "Bus": {
+      "title": "Bus",
+      "description": "A school bus.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "busNumber": { "type": "string" },
+        "capacity": { "type": "number" },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" },
+        "driverUid": { "type": "string" },
+        "driver": { "type": "string" },
+        "driverPhone": { "type": "string" },
+        "driverEmail": { "type": "string", "format": "email" },
+        "status": { "type": "string" },
+        "lastUpdate": { "type": "string", "format": "date-time" },
+        "routeName": { "type": "string" }
+      },
+      "required": ["id", "busNumber"]
+    },
+    "Route": {
+      "title": "Route",
+      "description": "A bus route.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "startPoint": { "type": "string" },
+        "endPoint": { "type": "string" },
+        "stops": { "type": "array", "items": { "type": "string" } },
+        "assignedBus": { "type": "string" },
+        "assignedBusId": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    },
+    "Assignment": {
+      "title": "Assignment",
+      "description": "Assignment of a bus and route to a driver.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "driverId": { "type": "string" },
+        "busId": { "type": "string" },
+        "routeId": { "type": "string" },
+        "driverName": { "type": "string" },
+        "busNumber": { "type": "string" },
+        "routeName": { "type": "string" }
+      },
+      "required": ["id", "driverId", "busId", "routeId"]
+    },
+    "Issue": {
+      "title": "Issue",
+      "description": "An issue reported by a student or driver.",
+      "type": "object",
+      "properties": {
+        "reporterId": { "type": "string" },
+        "reporterName": { "type": "string" },
+        "reporterRole": { "type": "string", "enum": ["student", "driver"] },
+        "type": { "type": "string" },
+        "description": { "type": "string" },
+        "status": { "type": "string", "enum": ["Pending", "Reviewing", "Critical", "Resolved"] },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "target": { "type": "string" },
+        "busNumber": { "type": "string" },
+        "driverName": { "type": "string" },
+        "driverEmail": { "type": "string", "format": "email" }
+      },
+      "required": ["reporterId", "reporterName", "description", "status", "timestamp"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "A notification or broadcast.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "targetType": { "type": "string", "enum": ["all", "route", "bus", "driver", "student"] },
+        "targetId": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "senderId": { "type": "string" },
+        "driverUid": { "type": "string" },
+        "read": { "type": "boolean" }
+      },
+      "required": ["title", "message", "timestamp"]
+    },
+    "LoginLog": {
+      "title": "LoginLog",
+      "description": "Log of user login events.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "role": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "role", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": { "schema": "User", "description": "User roles." },
+    "/students/{studentId}": { "schema": "Student", "description": "Student profiles." },
+    "/drivers/{driverId}": { "schema": "Driver", "description": "Driver profiles." },
+    "/buses/{busId}": { "schema": "Bus", "description": "Bus tracking and info." },
+    "/routes/{routeId}": { "schema": "Route", "description": "Route definitions." },
+    "/assignments/{assignmentId}": { "schema": "Assignment", "description": "Driver/Bus/Route assignments." },
+    "/issues/{issueId}": { "schema": "Issue", "description": "Reported issues." },
+    "/notifications/{notificationId}": { "schema": "Notification", "description": "Notifications and broadcasts." },
+    "/loginLogs/{logId}": { "schema": "LoginLog", "description": "Login history." }
+  }
+}

@@ -1,0 +1,164 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (request.auth.token.email in ["aneetaprabhanandhan18@gmail.com", "rohith@gmail.com", "rosec@gmail.com", "rani@gmail.com", "kirans@gmail.com", "rohanr@gmail.com", "abinn@gmail.com", "varunm@gmail.com"] ||
+         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'));
+    }
+
+    function isOwner(uid) {
+      return isAuthenticated() && request.auth.uid == uid;
+    }
+
+    function isStudentOwner(studentData) {
+      return isAuthenticated() && (request.auth.uid == studentData.uid || request.auth.token.email == studentData.email);
+    }
+
+    function isDriverOwner(driverData) {
+      return isAuthenticated() && (request.auth.uid == driverData.uid || request.auth.token.email == driverData.email);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return hasOnlyAllowedFields(['role', 'email']) &&
+             data.role in ['student', 'driver', 'admin'] &&
+             data.email is string;
+    }
+
+    function isValidStudent(data) {
+      return hasRequiredFields(['id', 'name', 'email']) &&
+             data.name is string && data.name.size() < 100 &&
+             data.email is string;
+    }
+
+    function isValidDriver(data) {
+      return hasRequiredFields(['id', 'name', 'email']) &&
+             data.name is string && data.name.size() < 100 &&
+             data.email is string;
+    }
+
+    function isValidBus(data) {
+      return hasRequiredFields(['id', 'busNumber']) &&
+             data.busNumber is string && data.busNumber.size() < 20;
+    }
+
+    function isValidIssue(data) {
+      return hasRequiredFields(['reporterId', 'reporterName', 'description', 'status', 'timestamp']) &&
+             data.description is string && data.description.size() < 1000 &&
+             data.status in ['Pending', 'Reviewing', 'Critical', 'Resolved'];
+    }
+
+    // ===============================================================
+    // Collection Rules
+    // ===============================================================
+
+    match /_connection_test_/{docId} {
+      allow read: if true;
+    }
+
+    match /users/{userId} {
+      allow read: if isAdmin() || isOwner(userId);
+      allow create: if isAdmin() || (isAuthenticated() && request.auth.uid == userId && isValidUser(request.resource.data) && request.resource.data.role != 'admin');
+      allow update: if isAdmin() || (isAuthenticated() && request.auth.uid == userId && isValidUser(request.resource.data) && request.resource.data.role == resource.data.role);
+      allow delete: if isAdmin();
+    }
+
+    match /students/{studentId} {
+      allow read: if isAdmin() || isStudentOwner(resource.data);
+      // Only admins can list all students. Students can only get their own doc.
+      allow list: if isAdmin();
+      allow create: if isAdmin() && isValidStudent(request.resource.data);
+      allow update: if isAdmin() || (isAuthenticated() && isStudentOwner(resource.data) && (
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['uid', 'phone', 'boardingPoint', 'name'])
+      ));
+      allow delete: if isAdmin();
+    }
+
+    // Special rule for student email queries during login - RESTRICTED
+    match /students {
+      // This is needed for the query(collection(db, 'students'), where('email', '==', email))
+      // Firestore rules for queries require that the rule allows the query.
+      // We can restrict it to only allow queries with a filter on email.
+      allow list: if isAuthenticated() && (isAdmin() || (request.query.limit <= 1 && request.query.offset == 0));
+    }
+
+    match /drivers/{driverId} {
+      allow read: if isAdmin() || isDriverOwner(resource.data);
+      allow list: if isAdmin();
+      allow create: if isAdmin() && isValidDriver(request.resource.data);
+      allow update: if isAdmin() || (isAuthenticated() && isDriverOwner(resource.data) && (
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['uid', 'phone', 'name'])
+      ));
+      allow delete: if isAdmin();
+    }
+
+    // Special rule for driver email queries during login - RESTRICTED
+    match /drivers {
+      allow list: if isAuthenticated() && (isAdmin() || (request.query.limit <= 1 && request.query.offset == 0));
+    }
+
+    match /buses/{busId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin() && isValidBus(request.resource.data);
+      allow update: if isAdmin() || 
+                    (isAuthenticated() && (
+                      (resource.data.driverUid == request.auth.uid) || 
+                      (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lat', 'lng', 'lastUpdated', 'timestamp', 'isTripInProgress', 'tripStartTime', 'tripEndTime', 'reachedStops', 'stopTimestamps']))
+                    ));
+      allow delete: if isAdmin();
+    }
+
+    match /routes/{routeId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /assignments/{assignmentId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    match /issues/{issueId} {
+      allow read: if isAdmin() || resource.data.reporterId == request.auth.uid || resource.data.driverEmail == request.auth.token.email;
+      allow list: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidIssue(request.resource.data);
+      allow update: if isAdmin() || (isAuthenticated() && resource.data.reporterId == request.auth.uid && request.resource.data.status == resource.data.status);
+      allow delete: if isAdmin();
+    }
+
+    match /notifications/{notificationId} {
+      allow read, list: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAdmin() || (isAuthenticated() && resource.data.driverUid == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+
+    match /loginLogs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+  }
+}
